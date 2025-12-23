@@ -26,7 +26,7 @@ const Scanner = () => {
 
     try {
       // 1. Send to Backend
-      const response = await fetch('http://127.0.0.1:8000/analyze', {
+      const response = await fetch('https://know-your-food-4toj.onrender.com', {
         method: 'POST',
         body: formData,
       });
