@@ -1,0 +1,13 @@
+# Ignore Mac system files
+.DS_Store
+
+# Ignore Python junk
+__pycache__/
+*.py[cod]
+venv/
+.env
+
+# Ignore Node/Frontend junk
+node_modules/
+dist/
+.env.local
