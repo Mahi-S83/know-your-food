@@ -1,43 +1,64 @@
-import React, { useState } from 'react';
-import { Camera, Loader2, ShieldCheck, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react'; // <--- FIX 1: Added useEffect here
+import { useNavigate } from 'react-router-dom';
+import { Camera, Loader2, ShieldCheck } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
-const Scanner = () => {
+const Home = () => {
+  const navigate = useNavigate();
+
+  // 1. Authentication Check
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/'); // Redirect to Login if no token found
+    }
+  }, [navigate]);
+
   const [imagePreview, setImagePreview] = useState(null);
   const [imageFile, setImageFile] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null); // Stores the AI response
+  const [result, setResult] = useState(null);
 
   const handleUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
       setImageFile(file);
       setImagePreview(URL.createObjectURL(file));
-      setResult(null); // Reset previous results when new photo is picked
+      setResult(null);
     }
   };
 
+  // --- FIX 2: Updated analyze function to send Token ---
   const handleAnalyze = async () => {
     if (!imageFile) return;
     setLoading(true);
     
     const formData = new FormData();
-    formData.append('file', imageFile);
+    formData.append('file', imageFile); // Ensure your backend expects 'file' (not 'image')
+
+    // Get the token from storage
+    const token = localStorage.getItem('token');
 
     try {
-      // 1. Send to Backend
-      const response = await fetch('https://know-your-food-4toj.onrender.com', {
-        method: 'POST',
-        body: formData,
-      });
+      // CORRECT URL (Must include /analyze)
+    const response = await fetch('https://know-your-food-4toj.onrender.com/analyze', { 
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`, 
+  },
+  body: formData, 
+});
+
+      if (!response.ok) {
+        throw new Error('Analysis failed or unauthorized');
+      }
+
       const data = await response.json();
-      
-      // 2. Save the answer instead of alerting!
-      setResult(data.message); 
+      setResult(data.message); // Save the answer
       
     } catch (error) {
       console.error(error);
-      alert("Could not connect to the backend.");
+      alert("Analysis failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -85,7 +106,7 @@ const Scanner = () => {
           </div>
         </div>
 
-        {/* Card 2: The Results (Only shows if there is a result!) */}
+        {/* Card 2: The Results */}
         {result && (
           <div className="bg-white border border-slate-200 rounded-3xl shadow-xl p-8 animate-fade-in-up">
             <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-4">
@@ -93,7 +114,6 @@ const Scanner = () => {
               <h2 className="text-2xl font-black text-slate-800">Analysis Report</h2>
             </div>
             
-            {/* This converts the markdown to styled HTML */}
             <div className="prose prose-slate prose-lg max-w-none prose-headings:font-bold prose-headings:text-emerald-700 prose-p:text-slate-600 prose-li:text-slate-600 prose-strong:text-slate-900">
               <ReactMarkdown>{result}</ReactMarkdown>
             </div>
@@ -104,4 +124,4 @@ const Scanner = () => {
   );
 };
 
-export default Scanner;
+export default Home;

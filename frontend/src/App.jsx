@@ -1,14 +1,19 @@
-import Scanner from './Scanner'
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import Home from './pages/Home';
 
 function App() {
   return (
-    <div className="min-h-screen bg-gray-50 py-10">
-      <h1 className="text-3xl font-extrabold text-center text-green-700 mb-2">knowYourFood</h1>
-      <p className="text-center text-gray-500 mb-8">AI-Powered Ingredient Analysis</p>
-      
-      <Scanner />
-    </div>
-  )
+    <Router>
+      <Routes>
+        <Route path="/" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/scan" element={<Home />} />
+      </Routes>
+    </Router>
+  );
 }
 
-export default App
+export default App;
