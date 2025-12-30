@@ -12,13 +12,17 @@ function Signup() {
     setError('');
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/signup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
+     const API_URL = import.meta.env.DEV 
+  ? 'http://127.0.0.1:8000' 
+  : 'https://know-your-food-4toj.onrender.com';
+
+const response = await fetch(`${API_URL}/signup`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ email, password }),
+});
 
       if (!response.ok) {
         const data = await response.json();

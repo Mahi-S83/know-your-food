@@ -17,14 +17,20 @@ function Login() {
     formData.append('password', password);
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: formData,
-      });
+     const API_URL = import.meta.env.DEV 
+  ? 'http://127.0.0.1:8000' 
+  : 'https://know-your-food-4toj.onrender.com';
 
+const response = await fetch(`${API_URL}/login`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/x-www-form-urlencoded',
+  },
+  body: new URLSearchParams({
+    username: email,
+    password: password,
+  }),
+});
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.detail || 'Login failed');

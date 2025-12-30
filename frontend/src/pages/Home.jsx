@@ -40,8 +40,11 @@ const Home = () => {
     const token = localStorage.getItem('token');
 
     try {
-      // CORRECT URL (Must include /analyze)
-    const response = await fetch('https://know-your-food-4toj.onrender.com/analyze', { 
+      const API_URL = import.meta.env.DEV 
+  ? 'http://127.0.0.1:8000' 
+  : 'https://know-your-food-4toj.onrender.com';
+
+const response = await fetch(`${API_URL}/analyze`, { 
   method: 'POST',
   headers: {
     'Authorization': `Bearer ${token}`, 
