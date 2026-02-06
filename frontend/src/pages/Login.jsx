@@ -42,7 +42,7 @@ const response = await fetch(`${API_URL}/login`, {
       localStorage.setItem('token', data.access_token);
       
       // 3. Go to the Scanner Page
-      navigate('/scan');
+      navigate('/home');
       
     } catch (err) {
       setError(err.message);
