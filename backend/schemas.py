@@ -1,14 +1,26 @@
 from pydantic import BaseModel
+from typing import List, Optional
+from datetime import datetime
 
-# 1. What the user sends us to Sign Up
+# --- USER SCHEMAS ---
 class UserCreate(BaseModel):
     email: str
     password: str
 
-# 2. What we send back (Notice we DO NOT include the password!)
 class UserOut(BaseModel):
     id: int
     email: str
-
     class Config:
-        from_attributes = True
+        orm_mode = True
+
+# --- SCAN SCHEMAS ---
+# This is what we send to the frontend when they ask for history
+class ScanOut(BaseModel):
+    id: int
+    filename: str
+    score: int
+    summary: str
+    created_at: datetime
+    
+    class Config:
+        orm_mode = True

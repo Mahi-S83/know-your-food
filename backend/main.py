@@ -7,6 +7,8 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import models, schemas, database
 from database import engine, Base
 import os
+import json # <--- NEW: Needed to parse the AI result
+from typing import List # <--- NEW: Needed for lists
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import google.generativeai as genai
@@ -16,10 +18,8 @@ SECRET_KEY = "my_super_secret_key_change_this_in_production"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-# OAuth2 Setup
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
-# Helper function to create the Token
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
     if expires_delta:
@@ -31,28 +31,23 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-# 1. Load the hidden API key
 load_dotenv()
 api_key = os.getenv("GEMINI_API_KEY")
 
 if not api_key:
-    print("❌ ERROR: API Key not found! Did you create the .env file?")
+    print("❌ ERROR: API Key not found!")
 else:
-    print("✅ API Key found! Connecting to Gemini...")
     genai.configure(api_key=api_key)
 
-# Create Database Tables
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-# Password Hashing Setup
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def get_password_hash(password):
     return pwd_context.hash(password)
 
-# Database Dependency
 def get_db():
     db = database.SessionLocal()
     try:
@@ -60,7 +55,6 @@ def get_db():
     finally:
         db.close()
 
-# CORS Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -68,15 +62,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Setup the AI Model
-# Using the new V2 model which IS in your list
+# AI MODEL CONFIGURATION
 model = genai.GenerativeModel("gemini-flash-latest")
 
 @app.get("/")
 def home():
-    return {"status": "Online", "model": "Gemini 1.5 Flash"}
+    return {"status": "Online", "model": "Gemini Flash Latest"}
 
-# The "Bouncer" Function (Auth Check)
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
         status_code=401,
@@ -97,69 +89,75 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         
     return user
 
-# --- THE ANALYZE ENDPOINT (FIXED) ---
+# --- 1. THE ANALYZE ENDPOINT (Now SAVES data!) ---
 @app.post("/analyze")
 async def analyze_ingredients(
     file: UploadFile = File(...), 
-    current_user: models.User = Depends(get_current_user)
+    db: Session = Depends(get_db),        # <--- Added DB access
+    current_user: models.User = Depends(get_current_user) # <--- Added User access
 ):
     try:
-        # 1. Read the image file
         contents = await file.read()
-        
-        # 2. Prepare the image for Gemini
-        # FIX: We define this as a LIST named 'image_parts'
-        image_parts = [
-            {
-                "mime_type": file.content_type,
-                "data": contents
-            }
-        ]
+        image_parts = [{"mime_type": file.content_type, "data": contents}]
 
-        # 3. The "Magic Prompt"
         prompt = """
-    Analyze the ingredients in this image. 
-    Identify every additive and ingredient.
-    
-    Return the output ONLY as a valid JSON object with this exact structure:
-    {
-        "ingredients": [
-            {
-                "name": "Ingredient Name",
-                "rating": "Red", 
-                "reason": "Short explanation why (max 5 words)"
-            },
-            {
-                "name": "Next Ingredient",
-                "rating": "Green",
-                "reason": "Short explanation"
-            }
-        ],
-        "summary": "A short 2-sentence summary of the product health.",
-        "score": 85
-    }
+        Analyze the ingredients in this image. Identify every additive.
+        Return ONLY valid JSON:
+        {
+            "ingredients": [{"name": "X", "rating": "Red", "reason": "Y"}],
+            "summary": "Short summary.",
+            "score": 85
+        }
+        Rules: Red=Harmful, Yellow=Moderate, Green=Safe.
+        NO MARKDOWN. RAW JSON ONLY.
+        """
 
-    Rules for Rating:
-    - Red: Harmful, carcinogenic, or highly processed additives.
-    - Yellow: Moderate processing, sugar, or salt.
-    - Green: Natural, safe, or healthy ingredients.
-    
-    IMPORTANT: Do not format with markdown ticks (```json). Just return the raw JSON string.
-    """
-
-        # 4. Send to Gemini
-        # Now 'image_parts' exists, so this will work!
         response = model.generate_content(
             [prompt, image_parts[0]],
             generation_config={"temperature": 0.0} 
         )
         
-        print("🤖 AI Response generated!")
+        # --- NEW LOGIC: SAVE TO DATABASE ---
+        try:
+            # 1. Clean the text (remove ```json if present)
+            clean_text = response.text.replace("```json", "").replace("```", "").strip()
+            
+            # 2. Convert text to Python Dictionary
+            ai_data = json.loads(clean_text) 
+            
+            # 3. Create the Database Record
+            new_scan = models.Scan(
+                filename=file.filename,
+                score=ai_data.get("score", 0),
+                summary=ai_data.get("summary", "No summary available"),
+                ingredients=clean_text, # Save the raw JSON string for details
+                user_id=current_user.id
+            )
+            
+            # 4. Save to DB
+            db.add(new_scan)
+            db.commit()
+            db.refresh(new_scan)
+            print(f"✅ Saved Scan ID: {new_scan.id} for user {current_user.email}")
+
+        except json.JSONDecodeError:
+            print("⚠️ Could not parse JSON for saving, but sending raw text.")
+
         return {"message": response.text}
 
     except Exception as e:
         print(f"❌ Error: {e}")
-        return {"message": "Error analyzing image. Please try again."}
+        return {"message": "Error analyzing image."}
+
+# --- 2. NEW ENDPOINT: GET HISTORY ---
+@app.get("/history", response_model=List[schemas.ScanOut])
+def get_history(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    # Fetch all scans belonging to this user, newest first
+    scans = db.query(models.Scan).filter(models.Scan.user_id == current_user.id).order_by(models.Scan.created_at.desc()).all()
+    return scans
 
 # --- AUTH ROUTES ---
 @app.post("/signup", response_model=schemas.UserOut)
@@ -174,22 +172,14 @@ def signup(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-    
     return new_user
 
 @app.post("/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.email == form_data.username).first()
-    
     if not user or not pwd_context.verify(form_data.password, user.hashed_password):
-        raise HTTPException(
-            status_code=400, 
-            detail="Incorrect email or password"
-        )
+        raise HTTPException(status_code=400, detail="Incorrect email or password")
     
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.email}, expires_delta=access_token_expires
-    )
-    
+    access_token = create_access_token(data={"sub": user.email}, expires_delta=access_token_expires)
     return {"access_token": access_token, "token_type": "bearer"}
