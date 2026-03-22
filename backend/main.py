@@ -104,11 +104,11 @@ async def analyze_ingredients(
         Analyze the ingredients in this image. Identify every additive.
         Return ONLY valid JSON:
         {
-            "ingredients": [{"name": "X", "rating": "Red", "reason": "Y"}],
+            "ingredients": [{"name": "X", "status": "Red", "insight": "Y"}],
             "summary": "Short summary.",
             "score": 85
         }
-        Rules: Red=Harmful, Yellow=Moderate, Green=Safe.
+        Rules: Red=Harmful, Yellow=Moderate, Green=Safe. For 'insight', provide a short 1-sentence explanation of what the ingredient is or why it got that status.
         NO MARKDOWN. RAW JSON ONLY.
         """
 

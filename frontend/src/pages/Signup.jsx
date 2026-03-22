@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
+const BASE_URL = import.meta.env.VITE_API_URL || "https://know-your-food-4toj.onrender.com"
 function Signup() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -16,12 +17,15 @@ function Signup() {
   ? 'http://127.0.0.1:8000' 
   : 'https://know-your-food-4toj.onrender.com';
 
-const response = await fetch(`${API_URL}/signup`, {
+const response = await fetch(`${BASE_URL}/signup`, { // Make sure this hits your signup endpoint!
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
   },
-  body: JSON.stringify({ email, password }),
+  body: JSON.stringify({ 
+    email: email, 
+    password: password 
+  }),
 });
 
       if (!response.ok) {

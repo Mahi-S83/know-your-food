@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Camera, ShieldCheck, RefreshCw, Share2, History, AlertTriangle, UploadCloud } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-
+import IngredientList from './IngredientList';
 // --- INTERNAL COMPONENTS (Moved inside to prevent crashes) ---
 
 const EmptyState = ({ onUpload }) => (
@@ -236,22 +236,9 @@ const Home = () => {
                 <p className="text-slate-600 italic text-center">"{result.summary}"</p>
               </div>
 
-              {/* Simple Ingredient List */}
-              <div className="space-y-3">
-                <h4 className="font-bold text-slate-800 flex items-center gap-2">
-                  <ShieldCheck size={18} /> Ingredients
-                </h4>
-                {result.ingredients && result.ingredients.map((ing, i) => (
-                    <div key={i} className="flex justify-between items-center text-sm border-b border-slate-50 pb-2">
-                        <span className="font-medium text-slate-700">{ing.name}</span>
-                        <span className={`px-2 py-1 rounded-full text-xs font-bold 
-                            ${ing.rating === 'Red' ? 'bg-rose-100 text-rose-700' : 
-                              ing.rating === 'Green' ? 'bg-emerald-100 text-emerald-700' : 
-                              'bg-amber-100 text-amber-700'}`}>
-                            {ing.rating}
-                        </span>
-                    </div>
-                ))}
+              {/* Advanced Grouped Ingredient List */}
+              <div className="mt-8">
+                <IngredientList ingredients={result.ingredients} />
               </div>
 
               <div className="mt-8 flex gap-4">
