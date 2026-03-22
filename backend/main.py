@@ -102,14 +102,19 @@ async def analyze_ingredients(
 
         prompt = """
         Analyze the ingredients in this image. Identify every additive.
-        Return ONLY valid JSON:
+        You MUST return ONLY a valid JSON object. Do not include any other text, markdown formatting (like ```json), or conversational filler. 
+
+        The JSON object must strictly follow this exact structure:
         {
-            "ingredients": [{"name": "X", "status": "Red", "insight": "Y"}],
-            "summary": "Short summary.",
+            "ingredients": [{"name": "Ingredient Name", "rating": "Red", "reason": "Short explanation"}],
+            "summary": "Short overall summary.",
             "score": 85
         }
-        Rules: Red=Harmful, Yellow=Moderate, Green=Safe. For 'insight', provide a short 1-sentence explanation of what the ingredient is or why it got that status.
-        NO MARKDOWN. RAW JSON ONLY.
+
+        Rules: 
+        - rating must be EXACTLY "Red", "Yellow", or "Green".
+        - Red=Harmful, Yellow=Moderate, Green=Safe. 
+        - For 'reason', provide a short 1-sentence explanation.
         """
 
         response = model.generate_content(
