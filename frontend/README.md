@@ -2,8 +2,9 @@
 
 > Instant health analysis of food products using multimodal AI
 
-## 🎯 Problem Statement
+![App Screenshot](frontend/screenshots/hero.png)
 
+## 🎯 Problem Statement 
 Consumers struggle to understand complex ingredient labels. Medical terminology and chemical names make it difficult to make informed health decisions while shopping.
 
 ## 💡 Solution
