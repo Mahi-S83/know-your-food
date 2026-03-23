@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+
 const BASE_URL = import.meta.env.VITE_API_URL || "https://know-your-food-4toj.onrender.com";
+
 function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -11,26 +13,20 @@ function Login() {
     e.preventDefault();
     setError('');
 
-    // 1. Prepare the data as "Form Data" (Required by FastAPI security)
+    // Prepare form data for FastAPI OAuth2
     const formData = new URLSearchParams();
-    formData.append('username', email); // FastAPI calls email "username"
+    formData.append('username', email);
     formData.append('password', password);
 
     try {
-     const API_URL = import.meta.env.DEV 
-  ? 'http://127.0.0.1:8000' 
-  : 'https://know-your-food-4toj.onrender.com';
+      const response = await fetch(`${BASE_URL}/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: formData,
+      });
 
-const response = await fetch(`${BASE_URL}/login`, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/x-www-form-urlencoded',
-  },
-  body: new URLSearchParams({
-    username: email,
-    password: password,
-  }),
-});
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.detail || 'Login failed');
@@ -38,16 +34,17 @@ const response = await fetch(`${BASE_URL}/login`, {
 
       const data = await response.json();
       
-      // 2. SAVE THE TOKEN! (This is the digital wristband)
+      // Save token
       localStorage.setItem('token', data.access_token);
       
-      // 3. Go to the Scanner Page
+      // Navigate to home
       navigate('/home');
       
     } catch (err) {
       setError(err.message);
     }
   };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white p-8 rounded-lg shadow-md w-96">
